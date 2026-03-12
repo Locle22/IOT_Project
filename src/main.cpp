@@ -10,6 +10,8 @@
 #include <LiquidCrystal_I2C.h>
 #include "DHT20.h"
 
+#include "led_blinky.h"
+
 // LCD1602
 LiquidCrystal_I2C lcd(0x21,16,2);
 DHT20 dht20;
@@ -175,6 +177,7 @@ void setup() {
   
   i2cMutex = xSemaphoreCreateMutex();
 
+  xTaskCreate(led_blinky, "LED_Blink", 2048, NULL, 2, NULL);
   xTaskCreate(TaskSensorRead, "Sensor_Read", 2048, NULL, 1, NULL);
   xTaskCreate(TaskLCD, "LCD_Display", 2048, NULL, 1, NULL);
 }
