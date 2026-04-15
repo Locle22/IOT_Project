@@ -10,6 +10,9 @@
 #include <LiquidCrystal_I2C.h>
 #include "DHT20.h"
 
+#include "global_task5.h"
+#include "tinyml.h"
+
 // LCD1602
 LiquidCrystal_I2C lcd(0x21,16,2);
 DHT20 dht20;
@@ -153,6 +156,32 @@ void TaskLCD(void *pvParameters) {
   }
 }
 
+
+void TaskSensorTinyML(void *pvParameters) {
+    SensorData data;
+    if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
+        dht20.begin();
+        xSemaphoreGive(i2cMutex);
+    }
+
+    while (1) {
+        if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
+            dht20.read();
+            data.temperature = dht20.getTemperature();
+            data.humidity = dht20.getHumidity();
+            xSemaphoreGive(i2cMutex);
+        }
+
+        if (sensorQueue != NULL) {
+            xQueueOverwrite(sensorQueue, &data);
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+}
+
+
+
 void setup() {
   Serial.begin(115200);
   Wire.begin(GPIO_NUM_11, GPIO_NUM_12);
@@ -173,10 +202,13 @@ void setup() {
   semHumHumid = xSemaphoreCreateBinary();
   semHumExtreme = xSemaphoreCreateBinary();
   
+  sensorQueue = xQueueCreate(1, sizeof(SensorData));
   i2cMutex = xSemaphoreCreateMutex();
 
-  xTaskCreate(TaskSensorRead, "Sensor_Read", 2048, NULL, 1, NULL);
-  xTaskCreate(TaskLCD, "LCD_Display", 2048, NULL, 1, NULL);
+  // xTaskCreate(TaskSensorRead, "Sensor_Read", 2048, NULL, 1, NULL);
+  // xTaskCreate(TaskLCD, "LCD_Display", 2048, NULL, 1, NULL);
+  xTaskCreate(TaskSensorTinyML, "Sensor_TinyML", 2048, NULL, 1, NULL);
+  xTaskCreate(TaskTinyML, "TinyML", 4096, NULL, 1, NULL);
 }
 
 void loop() {
