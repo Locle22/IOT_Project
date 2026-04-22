@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-B Dashboard</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #e1f5fe 100%); margin: 0; padding: 20px; text-align: center; min-height: 100vh; position: relative; }
+    h2 { color: #1c1e21; margin-bottom: 30px; }
+
+    /* Settings Button */
+    .settings-btn { position: absolute; top: 20px; right: 20px; background: #1e90ff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s ease; z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .settings-btn:hover { background: #00bfff; transform: scale(1.1); }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+    .modal-content { background: linear-gradient(135deg, #1e90ff, #00bfff); padding: 30px 40px; border-radius: 20px; box-shadow: 0 6px 30px rgba(0,0,0,0.3); width: 90%; max-width: 400px; color: #fff; position: relative; text-align: center; }
+    .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: white; opacity: 0.8; transition: 0.3s; }
+    .close-btn:hover { opacity: 1; }
+    .modal-content h3 { margin-top: 0; font-size: 1.6em; margin-bottom: 20px; }
+    .modal-content input[type=text], .modal-content input[type=password] { width: 100%; padding: 12px; border: none; border-radius: 12px; font-size: 1em; margin-bottom: 12px; outline: none; transition: 0.3s; box-sizing: border-box; }
+    .modal-content input:focus { box-shadow: 0 0 10px #00ffcc; transform: scale(1.02); }
+    .modal-content button[type=submit] { background: #00ffcc; color: #000; font-weight: bold; border: none; border-radius: 20px; padding: 12px 25px; cursor: pointer; transition: 0.3s; font-size: 1em; margin-top: 5px; }
+    .modal-content button[type=submit]:hover { background: #00e0b0; transform: scale(1.05); }
+    #msg { margin-top: 15px; font-weight: 500; font-size: 1em; }
+
+    /* Dashboard */
+    .main-container { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 20px; max-width: 900px; margin: 0 auto; }
+    .left-column { display: flex; flex-direction: column; gap: 15px; }
+    .sensor-card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 25px; width: 350px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; color: white; transition: background-color 0.5s ease; background-color: #00bcd4; }
+    .sensor-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+    .sensor-row { display: flex; align-items: center; justify-content: center; margin: 15px 0; }
+    .sensor-icon { font-size: 50px; margin-right: 15px; }
+    .sensor-value { font-size: 42px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    .sensor-unit { font-size: 24px; margin-left: 5px; }
+    .clock-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; width: 350px; box-sizing: border-box; color: white; }
+    .clock-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+    .clock-time { font-size: 36px; font-weight: bold; }
+    .clock-date { font-size: 16px; margin-top: 8px; opacity: 0.9; }
+    .controls-column { display: flex; flex-direction: column; gap: 15px; }
+    .card { background-color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 25px; width: 350px; box-sizing: border-box; }
+    .device-name { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 20px; }
+    .btn { border: none; border-radius: 8px; padding: 12px 25px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin: 0 5px; }
+    .btn-on  { background-color: #e8ebe4; color: #4b4f56; }
+    .btn-off { background-color: #e8ebe4; color: #4b4f56; }
+    .btn-auto { background-color: #e8ebe4; color: #4b4f56; margin-top: 10px; width: 80%; padding: 12px; }
+    .btn-on.active   { background-color: #11b911; color: white; }
+    .btn-off.active  { background-color: #dc3545; color: white; }
+    .btn-auto.active { background-color: #00bcd4; color: white; }
+    .btn:active { transform: scale(0.95); }
+    .alert-box { margin-top: 12px; padding: 10px 15px; border-radius: 8px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: center; }
+    .alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+    .alert-ok      { background-color: #d4edda; color: #155724; border: 1px solid #28a745; }
+    .alert-info    { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+    .slider-wrap { margin-top: 14px; text-align: left; }
+    .slider-label { display: flex; justify-content: space-between; font-size: 14px; color: #444; margin-bottom: 8px; }
+    .slider-input { width: 100%; accent-color: #0d9f3d; }
+    @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+  </style>
+</head>
+<body>
+
+  <button class="settings-btn" id="openSettingsBtn" title="Cài đặt WiFi & CoreIOT">⚙️</button>
+
+  <h2>⚡ ESP32-B DASHBOARD</h2>
+
+  <!-- Modal Cài Đặt -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeSettingsBtn">&times;</span>
+      <h3>⚙️ Cấu hình thiết bị</h3>
+      <form id="ConfigForm">
+          <input name="ssid"     id="ssid"   type="text"     placeholder="📶 Tên Wi-Fi (SSID)" required>
+          <input name="password" id="pass"   type="password" placeholder="🔒 Mật khẩu (bỏ trống nếu không có)">
+          <input name="token"    id="token"  type="text"     placeholder="🔑 TOKEN CORE IOT" required>
+          <input name="server"   id="server" type="text"     placeholder="🌐 Máy chủ (VD: 192.168.1.100)" required>
+          <input name="port"     id="port"   type="text"     placeholder="⚡ Cổng (VD: 1883)" required>
+          <button type="submit">🚀 Lưu & Kết nối</button>
+      </form>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <!-- Dashboard chính -->
+  <div class="main-container">
+    <div class="left-column">
+      <!-- Sensor Card (dữ liệu từ ESP32-A qua CoreIOT) -->
+      <div class="sensor-card" id="sensorCard">
+        <div class="sensor-title">📊 THÔNG SỐ MÔI TRƯỜNG <span style="font-size:12px;opacity:0.8;">(ESP32-A)</span></div>
+        <div class="sensor-row">
+          <span class="sensor-icon">🌡️</span>
+          <span class="sensor-value" id="tempValue">--</span>
+          <span class="sensor-unit">°C</span>
+        </div>
+        <div class="sensor-row">
+          <span class="sensor-icon">💧</span>
+          <span class="sensor-value" id="humidValue">--</span>
+          <span class="sensor-unit">%</span>
+        </div>
+      </div>
+      <!-- Clock -->
+      <div class="clock-card">
+        <div class="clock-title">🕐 THỜI GIAN HIỆN TẠI</div>
+        <div class="clock-time" id="clockTime">00:00:00</div>
+        <div class="clock-date" id="clockDate">--/--/----</div>
+      </div>
+    </div>
+
+    <div class="controls-column">
+      <!-- Quạt làm mát -->
+      <div class="card">
+        <div class="device-name">❄️ Quạt Làm Mát</div>
+        <div>
+          <button class="btn btn-on"  id="fanOnBtn"  onclick="controlDevice('fan','ON')">BẬT</button>
+          <button class="btn btn-off active" id="fanOffBtn" onclick="controlDevice('fan','OFF')">TẮT</button>
+        </div>
+        <button class="btn btn-auto" id="fanAutoBtn" onclick="controlDevice('fan','AUTO')">🤖 TỰ ĐỘNG</button>
+        <div class="slider-wrap">
+          <div class="slider-label">
+            <span>Tốc độ quạt</span>
+            <span id="fanSpeedValue">255</span>
+          </div>
+          <input class="slider-input" type="range" id="fanSpeedSlider"
+                 min="0" max="255" value="255"
+                 oninput="onFanSpeedInput(this.value)"
+                 onchange="setFanSpeed(this.value)">
+        </div>
+        <div class="alert-box alert-warning" id="fanAlert">
+          <span>⚠️</span><span>Quạt đang tắt</span>
+        </div>
+      </div>
+
+      <!-- Đèn LCD -->
+      <div class="card">
+        <div class="device-name">💡 Đèn LCD Backlight</div>
+        <div>
+          <button class="btn btn-on active" id="lcdOnBtn"  onclick="controlDevice('lcd','ON')">BẬT</button>
+          <button class="btn btn-off"       id="lcdOffBtn" onclick="controlDevice('lcd','OFF')">TẮT</button>
+        </div>
+        <div class="alert-box alert-ok" id="lcdAlert">
+          <span>✅</span><span>LCD đang bật</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Modal Logic ──────────────────────────────────────────────────────────
+    var modal = document.getElementById('settingsModal');
+    document.getElementById('openSettingsBtn').onclick = () => modal.style.display = 'flex';
+    document.getElementById('closeSettingsBtn').onclick = () => modal.style.display = 'none';
+    window.onclick = e => { if (e.target == modal) modal.style.display = 'none'; };
+
+    document.getElementById('ConfigForm').onsubmit = function(e) {
+      e.preventDefault();
+      var msgEl = document.getElementById('msg');
+      msgEl.innerText = '🔄 Đang gửi...';
+      msgEl.style.color = '#fff';
+
+      // Gửi qua WebSocket (handleWebSocketMessage trên ESP32-B)
+      var payload = JSON.stringify({
+        page: 'setting',
+        value: {
+          ssid:     document.getElementById('ssid').value,
+          password: document.getElementById('pass').value,
+          token:    document.getElementById('token').value,
+          server:   document.getElementById('server').value,
+          port:     document.getElementById('port').value
+        }
+      });
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+        msgEl.innerText = '✅ Đã gửi! Thiết bị sẽ khởi động lại.';
+        msgEl.style.color = '#00ffcc';
+        setTimeout(() => modal.style.display = 'none', 2500);
+      } else {
+        msgEl.innerText = '⚠️ WebSocket chưa kết nối!';
+        msgEl.style.color = '#ffcccc';
+      }
+    };
+
+    // ── WebSocket kết nối với ESP32-B ────────────────────────────────────────
+    var ws;
+    function connectWS() {
+      ws = new WebSocket('ws://' + location.host + '/ws');
+      ws.onopen    = () => console.log('[WS] Connected');
+      ws.onclose   = () => { console.log('[WS] Disconnected, retry in 3s'); setTimeout(connectWS, 3000); };
+      ws.onerror   = e  => console.log('[WS] Error', e);
+      ws.onmessage = e  => console.log('[WS] Message:', e.data);
+    }
+    connectWS();
+
+    // ── Dashboard State ──────────────────────────────────────────────────────
+    var fanState = false, lcdState = true, fanAuto = false, fanSpeed = 255;
+
+    function controlDevice(device, state) {
+      fetch('/action?dev=' + device + '&state=' + state)
+        .then(r => { if (!r.ok) throw new Error('HTTP error'); return r.text(); })
+        .then(() => {
+          if (device === 'fan') {
+            if (state === 'ON')   { fanState = true;  fanAuto = false; setFanSpeed(fanSpeed); }
+            if (state === 'OFF')  { fanState = false; fanAuto = false; }
+            if (state === 'AUTO') { fanAuto = true; }
+            updateFanButtons(); updateFanAlert();
+          } else if (device === 'lcd') {
+            lcdState = (state === 'ON');
+            updateLcdButtons(); updateLcdAlert();
+          }
+        })
+        .catch(err => console.log('[Action] Error:', err));
+    }
+
+    function updateFanButtons() {
+      document.getElementById('fanOnBtn').classList.remove('active');
+      document.getElementById('fanOffBtn').classList.remove('active');
+      document.getElementById('fanAutoBtn').classList.remove('active');
+      if (fanAuto)       document.getElementById('fanAutoBtn').classList.add('active');
+      else if (fanState) document.getElementById('fanOnBtn').classList.add('active');
+      else               document.getElementById('fanOffBtn').classList.add('active');
+    }
+
+    function updateLcdButtons() {
+      document.getElementById('lcdOnBtn').classList.toggle('active',  lcdState);
+      document.getElementById('lcdOffBtn').classList.toggle('active', !lcdState);
+    }
+
+    function updateFanAlert() {
+      var a = document.getElementById('fanAlert');
+      if (fanAuto)       { a.className = 'alert-box alert-info';    a.innerHTML = '<span>🤖</span><span>Quạt TỰ ĐỘNG</span>'; }
+      else if (fanState) { a.className = 'alert-box alert-ok';      a.innerHTML = '<span>✅</span><span>Quạt đang bật</span>'; }
+      else               { a.className = 'alert-box alert-warning'; a.innerHTML = '<span>⚠️</span><span>Quạt đang tắt</span>'; }
+    }
+
+    function updateLcdAlert() {
+      var a = document.getElementById('lcdAlert');
+      if (lcdState) { a.className = 'alert-box alert-ok';      a.innerHTML = '<span>✅</span><span>LCD đang bật</span>'; }
+      else          { a.className = 'alert-box alert-warning'; a.innerHTML = '<span>⚠️</span><span>LCD đang tắt</span>'; }
+    }
+
+    function onFanSpeedInput(v) {
+      fanSpeed = Number(v);
+      document.getElementById('fanSpeedValue').textContent = fanSpeed;
+    }
+
+    function setFanSpeed(v) {
+      fanSpeed = Number(v);
+      document.getElementById('fanSpeedValue').textContent = fanSpeed;
+      fetch('/action?dev=fan&state=SPEED&value=' + fanSpeed).catch(e => console.log(e));
+    }
+
+    // ── Sensor card color (temperature heatmap) ──────────────────────────────
+    function updateSensorCardColor(temp) {
+      var ratio = Math.max(0, Math.min(1, (temp - 15) / (45 - 15)));
+      var r, g, b;
+      if (ratio < 0.5) {
+        var t = ratio * 2;
+        r = Math.round(t * 255); g = Math.round(188 + t * 5); b = Math.round(212 - t * 205);
+      } else {
+        var t = (ratio - 0.5) * 2;
+        r = Math.round(255 - t * 11); g = Math.round(193 - t * 126); b = Math.round(7 + t * 47);
+      }
+      document.getElementById('sensorCard').style.backgroundColor = 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    // ── Fetch sensor data từ ESP32-B (đọc từ xQueueSensorData) ──────────────
+    function fetchSensorData() {
+      fetch('/sensor')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('tempValue').textContent  = data.temp.toFixed(1);
+          document.getElementById('humidValue').textContent = data.hum.toFixed(1);
+          updateSensorCardColor(data.temp);
+        })
+        .catch(e => console.log('[Sensor] Error:', e));
+    }
+
+    // ── Clock ────────────────────────────────────────────────────────────────
+    function updateClock() {
+      var n = new Date();
+      var hh = String(n.getHours()).padStart(2,'0');
+      var mm = String(n.getMinutes()).padStart(2,'0');
+      var ss = String(n.getSeconds()).padStart(2,'0');
+      var dd = String(n.getDate()).padStart(2,'0');
+      var mo = String(n.getMonth()+1).padStart(2,'0');
+      var wd = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][n.getDay()];
+      document.getElementById('clockTime').textContent = hh + ':' + mm + ':' + ss;
+      document.getElementById('clockDate').textContent = wd + ', ' + dd + '/' + mo + '/' + n.getFullYear();
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    fetchSensorData();
+    setInterval(fetchSensorData, 2000);
+  </script>
+</body>
+</html>
