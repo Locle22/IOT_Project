@@ -350,3 +350,36 @@ body {
     opacity  : 1;
   }
 }
+
+/* TinyML Alert (fire & nuisance)*/
+.tinyml-alert { 
+    display: none; 
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    border-radius: 12px; 
+    padding: 20px; 
+    width: 350px; 
+    box-sizing: border-box; 
+    box-shadow: 0 6px 25px rgba(0,0,0,0.3); 
+}
+
+.alert-fire { background: linear-gradient(135deg, #dc3545, #c82333); color: white; }
+.alert-nuisance { background: linear-gradient(135deg, #ffc107, #e0a800); color: #1c1e21; }
+
+.tinyml-alert-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; justify-content: center; }
+.tinyml-alert-text { font-size: 14px; opacity: 0.95; font-weight: 500;}
+
+.tinyml-alert-active {
+    display: block !important;
+    animation: alertFlow 2s ease-in-out forwards;
+}
+
+@keyframes alertFlow {
+    0% { opacity: 0; transform: translate(-50%, -20px) scale(0.9); }
+    20% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    60% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -100px); }
+}
