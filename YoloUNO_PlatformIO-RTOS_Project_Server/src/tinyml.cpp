@@ -1,6 +1,6 @@
 #include "tinyml.h"
 
-// Globals, for the convenience of one-shot setup.
+// Globals for TinyML interpreter
 namespace
 {
     tflite::ErrorReporter *error_reporter = nullptr;
@@ -8,20 +8,19 @@ namespace
     tflite::MicroInterpreter *interpreter = nullptr;
     TfLiteTensor *input = nullptr;
     TfLiteTensor *output = nullptr;
-    constexpr int kTensorArenaSize = 8 * 1024; // Adjust size based on your model
+    constexpr int kTensorArenaSize = 16 * 1024;
     uint8_t tensor_arena[kTensorArenaSize];
 } // namespace
 
 void setupTinyML()
 {
-    Serial.println("TensorFlow Lite Init....");
     static tflite::MicroErrorReporter micro_error_reporter;
     error_reporter = &micro_error_reporter;
 
-    model = tflite::GetModel(dht_anomaly_model_tflite); // g_model_data is from model_data.h
+    model = tflite::GetModel(dht_model_tflite);
     if (model->version() != TFLITE_SCHEMA_VERSION)
     {
-        error_reporter->Report("Model provided is schema version %d, not equal to supported version %d.",
+        error_reporter->Report("Model version mismatch: %d vs %d",
                                model->version(), TFLITE_SCHEMA_VERSION);
         return;
     }
@@ -40,38 +39,68 @@ void setupTinyML()
 
     input = interpreter->input(0);
     output = interpreter->output(0);
+}
 
-    Serial.println("TensorFlow Lite Micro initialized on ESP32.");
+// Helper function to find argmax (class with highest probability)
+static uint8_t argmax(float* output_data, int size) {
+    uint8_t max_index = 0;
+    float max_value = output_data[0];
+    for (int i = 1; i < size; i++) {
+        if (output_data[i] > max_value) {
+            max_value = output_data[i];
+            max_index = i;
+        }
+    }
+    return max_index;
 }
 
 void tiny_ml_task(void *pvParameters)
 {
-
     setupTinyML();
 
     while (1)
     {
-
-        // Đọc dữ liệu cảm biến mới nhất từ Queue (thay thế biến toàn cục)
+        // Đọc dữ liệu cảm biến mới nhất từ Queue
         SensorData sd = {0.0f, 0.0f};
         xQueuePeek(xQueueSensorData, &sd, 0);  // Non-blocking peek
+
+        // Measure inference time
+        unsigned long start_us = micros();
 
         input->data.f[0] = sd.temp;
         input->data.f[1] = sd.hum;
 
         // Run inference
         TfLiteStatus invoke_status = interpreter->Invoke();
+
+        unsigned long duration_us = micros() - start_us;
+
         if (invoke_status != kTfLiteOk)
         {
             error_reporter->Report("Invoke failed");
             return;
         }
 
-        // Get and process output
-        float result = output->data.f[0];
-        Serial.print("Inference result: ");
-        Serial.println(result);
+        // Get arena used bytes after inference
+        uint32_t arena_used = interpreter->arena_used_bytes();
 
-        vTaskDelay(5000);
+        // Get output - 3 classes: Background(0), Fire(1), Nuisance(2)
+        uint8_t predicted_class = argmax(output->data.f, 3);
+
+        // Update global metrics
+        tinyml_update_metrics(predicted_class, duration_us, arena_used);
+
+        // Send result to queue for other tasks (non-blocking)
+        TinyMLResult mlResult = {
+            .predicted_class = predicted_class,
+            .timestamp = millis(),
+            .duration_us = duration_us,
+            .arena_used_bytes = arena_used,
+            .temp = sd.temp,
+            .hum = sd.hum
+        };
+        xQueueOverwrite(xQueueTinyMLResult, &mlResult);
+
+        vTaskDelay(2000);
     }
 }

@@ -90,6 +90,37 @@ window.onload = function () {
         gaugeTemp.refresh(Math.floor(Math.random() * 15) + 20);
         gaugeHumi.refresh(Math.floor(Math.random() * 40) + 40);
     }, 3000);
+
+    // ==================== TINYML POLLING (Fire detection) ====================
+    // Poll /api/tinyml every 2 seconds to check for fire alerts
+    setInterval(async () => {
+        try {
+            const response = await fetch('/api/tinyml');
+            const data = await response.json();
+            
+            const alertFire = document.getElementById('tinymlAlertFire');
+            const alertNuisance = document.getElementById('tinymlAlertNuisance');
+
+            if (data.is_fire) {
+                if (alertNuisance) alertNuisance.classList.remove('tinyml-alert-active');
+                if (alertFire && !alertFire.classList.contains('tinyml-alert-active')) {
+                    alertFire.classList.add('tinyml-alert-active');
+                    // setTimeout(() => { alertFire.classList.remove('tinyml-alert-active'); }, 2500);
+                }
+            } else if (data.is_nuisance) {
+                if (alertFire) alertFire.classList.remove('tinyml-alert-active');
+                if (alertNuisance && !alertNuisance.classList.contains('tinyml-alert-active')) {
+                    alertNuisance.classList.add('tinyml-alert-active');
+                    // setTimeout(() => { alertNuisance.classList.remove('tinyml-alert-active'); }, 2500);
+                }
+            } else {
+                if (alertFire) alertFire.classList.remove('tinyml-alert-active');
+                if (alertNuisance) alertNuisance.classList.remove('tinyml-alert-active');
+            }
+        } catch (e) {
+            console.warn('TinyML API Error:', e);
+        }
+    }, 2000);
 };
 
 

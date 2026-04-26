@@ -148,11 +148,49 @@ void coreiot_task(void *pvParameters)
 
     Serial.printf("[CoreIOT] Broker: %s:%d\n", server, port);
 
+    // TinyML telemetry timer (send every 5 seconds)
+    uint32_t last_telemetry_send = 0;
+    const uint32_t TELEMETRY_INTERVAL = 5000; // 5 seconds
+
     while (1) {
         if (!client.connected()) {
             reconnect();
         }
         client.loop();
+
+        // ── TinyML Telemetry: gửi metrics lên CoreIOT mỗi 5 giây ─────────────
+        uint32_t now = millis();
+        if (now - last_telemetry_send >= TELEMETRY_INTERVAL) {
+            // Lấy dữ liệu sensor
+            SensorData sd = {0.0f, 0.0f};
+            xQueuePeek(xQueueSensorData, &sd, 0);
+
+            // Lấy dữ liệu TinyML (thread-safe via Mutex)
+            TinyMLMetrics ml_metrics = tinyml_get_metrics();
+
+            // Build JSON payload
+            StaticJsonDocument<256> doc;
+            doc["temp"] = sd.temp;
+            doc["hum"] = sd.hum;
+            doc["ml_result"] = ml_metrics.predicted_class;  // 0=Background, 1=Fire, 2=Nuisance
+            doc["inference_time_us"] = ml_metrics.last_inference_time_us;
+            doc["arena_used"] = ml_metrics.arena_used_bytes;
+
+            char jsonBuffer[256];
+            serializeJson(doc, jsonBuffer);
+
+            // Publish to telemetry topic
+            String topic = "v1/devices/me/telemetry";
+            if (client.publish(topic.c_str(), jsonBuffer)) {
+                Serial.printf("[TinyML] Telemetry: T=%.1f H=%.1f ML=%d Time=%u Arena=%u\n",
+                    sd.temp, sd.hum, ml_metrics.predicted_class,
+                    ml_metrics.last_inference_time_us, ml_metrics.arena_used_bytes);
+                last_telemetry_send = now;
+            } else {
+                Serial.println("[TinyML] Telemetry failed");
+            }
+        }
+
         vTaskDelay(pdMS_TO_TICKS(10));  // Không block lâu — giữ MQTT responsive
     }
 }

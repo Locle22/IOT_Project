@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32-B Dashboard</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #e1f5fe 100%); margin: 0; padding: 20px; text-align: center; min-height: 100vh; position: relative; }
     h2 { color: #1c1e21; margin-bottom: 30px; }
@@ -60,6 +61,14 @@
 </head>
 <body>
 
+  <div class="tinyml-alert alert-fire" id="tinymlAlertFire">
+    <div class="tinyml-alert-title">🔥 CẢNH BÁO CHÁY!</div>
+    <div class="tinyml-alert-text">Phát hiện nguy cơ cháy - kiểm tra ngay!</div>
+  </div>
+  <div class="tinyml-alert alert-nuisance" id="tinymlAlertNuisance">
+    <div class="tinyml-alert-title">⚠️ NGHI NGỜ BẤT THƯỜNG</div>
+    <div class="tinyml-alert-text">Môi trường thay đổi đột ngột (Nhiễu).</div>
+  </div>
   <button class="settings-btn" id="openSettingsBtn" title="Cài đặt WiFi & CoreIOT">⚙️</button>
 
   <h2>⚡ ESP32-B DASHBOARD</h2>
@@ -142,7 +151,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> 
 
   <script>
     // ── Modal Logic ──────────────────────────────────────────────────────────
@@ -294,4 +303,5 @@
     setInterval(fetchSensorData, 2000);
   </script>
 </body>
+<script src="script.js"></script>
 </html>
