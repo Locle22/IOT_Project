@@ -5,7 +5,7 @@
 #include "LittleFS.h"
 #include <AsyncTCP.h>
 #include <ArduinoJson.h>
-#include <ElegantOTA.h>
+
 #include <WiFi.h>
 #include "global.h"
 

@@ -1,15 +1,17 @@
 #include "coreiot.h"
 #include "task_check_info.h"
 
-// ─── Fallback MQTT Config (dùng khi chưa cấu hình qua Web) ──────────────────
-static const char* FALLBACK_SERVER = "10.235.76.226";  // ← IP Mosquitto broker
-static const char* FALLBACK_TOKEN  = "g7drm1amhd3dchr379xu";
+// ─── Fallback MQTT Config (TinyBroker chạy trên PC) ─────────────────────────
+// ⚠️ Đổi IP này thành IP WiFi của máy tính đang chạy TinyBroker.py
+//    Mở CMD/PowerShell → gõ "ipconfig" → tìm dòng "IPv4 Address"
+//    Ví dụ: 192.168.1.100
+static const char* FALLBACK_SERVER = "192.168.1.190";  // ← ĐỔI THÀNH IP MÁY BẠN
 static const int   FALLBACK_PORT   = 1883;
 
 WiFiClient  espClient;
 PubSubClient client(espClient);
 
-// ─── MQTT Callback (nhận RPC từ CoreIOT nếu cần) ────────────────────────────
+// ─── MQTT Callback (nhận message nếu có) ─────────────────────────────────────
 void callback(char* topic, byte* payload, unsigned int length)
 {
     char message[length + 1];
@@ -18,24 +20,18 @@ void callback(char* topic, byte* payload, unsigned int length)
     Serial.printf("[MQTT] Topic: %s | Payload: %s\n", topic, message);
 }
 
-// ─── Reconnect với token xác thực ────────────────────────────────────────────
+// ─── Reconnect (TinyBroker: anonymous, không cần token) ──────────────────────
 void reconnect()
 {
     while (!client.connected()) {
-        Serial.print("[MQTT] Connecting...");
+        Serial.print("[MQTT] Connecting to TinyBroker...");
         String clientId = "ESP32A-" + String(random(0xffff), HEX);
 
-        // Đọc token từ config
-        NetConfig_t mqttCfg;
-        loadNetConfig(&mqttCfg);
-        const char* token = (strlen(mqttCfg.coreToken) == 0) ? FALLBACK_TOKEN : mqttCfg.coreToken;
-
-        if (client.connect(clientId.c_str(), token, NULL)) {
+        // TinyBroker cho phép anonymous → connect không cần user/pass
+        if (client.connect(clientId.c_str())) {
             Serial.println(" connected!");
-            client.subscribe("v1/devices/me/rpc/request/+");
-            Serial.println("[MQTT] Subscribed: RPC");
         } else {
-            Serial.printf("[MQTT] failed (rc=%d), retry in 5s\n", client.state());
+            Serial.printf(" failed (rc=%d), retry in 5s\n", client.state());
             vTaskDelay(pdMS_TO_TICKS(5000));
         }
     }
