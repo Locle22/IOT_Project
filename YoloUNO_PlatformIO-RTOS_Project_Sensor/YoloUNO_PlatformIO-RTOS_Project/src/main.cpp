@@ -37,12 +37,19 @@ void setup()
 
 void loop()
 {
-    // WiFi reconnect
+    // Nếu có config WiFi hợp lệ
     if (check_info_File(1)) {
-        if (!Wifi_reconnect()) {
+        if (Wifi_reconnect()) {
+            // WiFi đã kết nối → tắt webserver, không cần AP
             Webserver_stop();
+        } else {
+            // WiFi chưa kết nối → giữ webserver để user cấu hình
+            Webserver_reconnect();
         }
+    } else {
+        // Không có config → chạy webserver AP cho user nhập
+        Webserver_reconnect();
     }
-    // Web Server (AP mode — cấu hình WiFi)
-    Webserver_reconnect();
+
+    delay(1000);
 }
