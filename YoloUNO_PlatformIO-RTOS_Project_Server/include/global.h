@@ -83,5 +83,8 @@ void tinyml_unlock();
 TinyMLMetrics tinyml_get_metrics();
 void tinyml_update_metrics(uint8_t predicted_class, uint32_t duration_us, uint32_t arena_used_bytes);
 void initTinyMLSync();
+// LCD backlight control từ webserver (semaphore)
+// Give = tắt backlight, Take = bật lại
+extern SemaphoreHandle_t semLcdOff;
 
 #endif

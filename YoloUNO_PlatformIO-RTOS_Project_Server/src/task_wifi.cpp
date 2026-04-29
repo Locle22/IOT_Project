@@ -1,13 +1,16 @@
 #include "task_wifi.h"
 #include "task_check_info.h"
 
+// Flag: đang ở AP mode chờ user nhập WiFi mới → KHÔNG thử reconnect
+static bool apFallbackActive = false;
+
 void startAP()
 {
     WiFi.mode(WIFI_AP);
-    // Lưu ý: SSID_AP và PASS_AP lấy từ platformio.ini (build macros)
     WiFi.softAP(String(SSID_AP), String(PASS_AP));
-    Serial.print("AP IP: ");
+    Serial.print("[WiFi] AP Started — IP: ");
     Serial.println(WiFi.softAPIP());
+    apFallbackActive = true;   // Khóa reconnect
 }
 
 void startSTA()
@@ -15,37 +18,53 @@ void startSTA()
     NetConfig_t cfg;
     loadNetConfig(&cfg);
 
-    if (strlen(cfg.ssid) == 0)
-    {
-        vTaskDelete(NULL);
+    if (strlen(cfg.ssid) == 0) {
+        Serial.println("[WiFi] No SSID configured, starting AP...");
+        startAP();
+        return;
     }
 
+    apFallbackActive = false;  // Mở khóa vì có config mới
     WiFi.mode(WIFI_STA);
 
-    if (strlen(cfg.pass) == 0)
-    {
+    if (strlen(cfg.pass) == 0) {
         WiFi.begin(cfg.ssid);
-    }
-    else
-    {
+    } else {
         WiFi.begin(cfg.ssid, cfg.pass);
     }
 
-    while (WiFi.status() != WL_CONNECTED)
-    {
+    Serial.printf("[WiFi] Connecting to %s", cfg.ssid);
+
+    // Timeout 15 giây
+    int timeout = 150;
+    while (WiFi.status() != WL_CONNECTED && timeout > 0) {
         vTaskDelay(pdMS_TO_TICKS(100));
+        Serial.print(".");
+        timeout--;
     }
-    // Set the Wifi Event Group Connected Bit (FreeRTOS standard)
-    if (egWifiStatus != NULL) {
-        xEventGroupSetBits(egWifiStatus, WIFI_CONNECTED_BIT);
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println(" Connected!");
+        Serial.print("[WiFi] IP: ");
+        Serial.println(WiFi.localIP());
+        if (egWifiStatus != NULL) {
+            xEventGroupSetBits(egWifiStatus, WIFI_CONNECTED_BIT);
+        }
+    } else {
+        Serial.println("\n[WiFi] ❌ Connection failed! Staying in AP mode...");
+        WiFi.disconnect();
+        startAP();
     }
 }
 
 bool Wifi_reconnect()
 {
+    if (apFallbackActive) {
+        return false;
+    }
+
     const wl_status_t status = WiFi.status();
-    if (status == WL_CONNECTED)
-    {
+    if (status == WL_CONNECTED) {
         if (egWifiStatus != NULL) {
             xEventGroupSetBits(egWifiStatus, WIFI_CONNECTED_BIT);
         }

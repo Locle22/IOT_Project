@@ -9,7 +9,7 @@ bool loadNetConfig(NetConfig_t* cfg)
   DynamicJsonDocument doc(4096);
   DeserializationError error = deserializeJson(doc, file);
   if (error) {
-    Serial.print(F("deserializeJson() failed: "));
+    Serial.printf("[Config] deserializeJson failed: %s\n", error.c_str());
     file.close();
     return false;
   }
@@ -67,7 +67,10 @@ bool check_info_File(bool isLoopMode)
 
   NetConfig_t cfg;
   if (!loadNetConfig(&cfg)) {
-    if (!isLoopMode) startAP();
+    if (!isLoopMode) {
+      Serial.println("[Config] No valid config, starting AP...");
+      startAP();
+    }
     return false;
   }
 

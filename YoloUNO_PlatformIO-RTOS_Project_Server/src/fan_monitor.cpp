@@ -55,15 +55,17 @@ void FanClearManualOverride()
 bool FanIsManualOverrideEnabled() { return fanManualOverride; }
 
 /*
- * FanControlTask: Kiểm tra semaphore mỗi 1s để quyết định bật/tắt
- * ─────────────────────────────────────────────────────────────────
+ * FanControlTask: Đọc nhiệt độ từ Queue để quyết định bật/tắt
+ * ─────────────────────────────────────────────────────────────
  *  Manual Override (từ Web): ưu tiên tuyệt đối
- *  Auto mode:  Bật nếu semTempWarning hoặc semTempCritical active
- *              Tắt nếu semTempNormal active
+ *  Auto mode:  Bật nếu temp >= 30°C
+ *              Tắt nếu temp < 30°C (hysteresis: tắt khi < 28°C tránh nhấp nháy)
  */
 void FanControlTask(void *pvParameters)
 {
     FanInit();
+
+    SensorData sd = {0.0f, 0.0f};
 
     while (1) {
         if (fanManualOverride) {
@@ -74,17 +76,20 @@ void FanControlTask(void *pvParameters)
                 FanOFF();
             }
         } else {
-            // ── Chế độ Auto (theo semaphore nhiệt độ) ────────────────────────
-            bool isHot = (xSemaphoreTake(semTempWarning,  0) == pdTRUE);
-            bool isCritical = (xSemaphoreTake(semTempCritical, 0) == pdTRUE);
-
-            if (isHot || isCritical) {
-                FanON();
-                // Trả semaphore lại để task khác (LED, LCD) cũng đọc được
-                if (isHot)      xSemaphoreGive(semTempWarning);
-                if (isCritical) xSemaphoreGive(semTempCritical);
-            } else {
-                FanOFF();
+            // ── Chế độ Auto (theo nhiệt độ từ Queue) ─────────────────────────
+            if (xQueuePeek(xQueueSensorData, &sd, 0) == pdTRUE) {
+                if (sd.temp >= 30.0f) {
+                    if (!fanCurrentState) {
+                        FanON();
+                        Serial.printf("[Fan] AUTO ON (T=%.1f >= 30)\n", sd.temp);
+                    }
+                } else if (sd.temp < 28.0f) {
+                    // Hysteresis: chỉ tắt khi < 28°C tránh bật/tắt liên tục quanh 30°C
+                    if (fanCurrentState) {
+                        FanOFF();
+                        Serial.printf("[Fan] AUTO OFF (T=%.1f < 28)\n", sd.temp);
+                    }
+                }
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1000));

@@ -67,3 +67,6 @@ void initTinyMLSync() {
     semTinyML = xSemaphoreCreateMutex();
     xQueueTinyMLResult = xQueueCreate(TINYML_QUEUE_SIZE, sizeof(TinyMLResult));
 }
+// ─── LCD Backlight Control ─────────────────────────────────────────────────────
+// Binary semaphore: Give = yêu cầu tắt, không có = bật
+SemaphoreHandle_t semLcdOff = xSemaphoreCreateBinary();

@@ -1,6 +1,6 @@
 #include "temp_humi_monitor.h"
 
-// I2C pins trên YOLO UNO
+// I2C pins trên ESP32-S3
 #define I2C_SDA 11
 #define I2C_SCL 12
 

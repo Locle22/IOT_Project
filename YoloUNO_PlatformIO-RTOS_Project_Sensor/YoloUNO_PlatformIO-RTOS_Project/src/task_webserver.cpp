@@ -46,7 +46,6 @@ void connnectWSV()
     server.on("/sensor", HTTP_GET, handleSensor);
 
     server.begin();
-    ElegantOTA.begin(&server);
     webserver_isrunning = true;
     Serial.println("[WebServer] Started on AP: " + WiFi.softAPIP().toString());
 }
@@ -66,5 +65,5 @@ void Webserver_stop()
 void Webserver_reconnect()
 {
     if (!webserver_isrunning) connnectWSV();
-    ElegantOTA.loop();
+
 }

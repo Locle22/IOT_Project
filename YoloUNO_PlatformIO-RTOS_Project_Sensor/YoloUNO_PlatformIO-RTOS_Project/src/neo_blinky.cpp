@@ -13,8 +13,8 @@ void neo_blinky(void *pvParameters)
     strip.show();
 
     while (1) {
-        // Xanh dương mờ — hít vào
-        strip.setPixelColor(0, strip.Color(0, 0, 40));
+        // Light green mờ — hít vào
+        strip.setPixelColor(0, strip.Color(0, 40, 0));
         strip.show();
         vTaskDelay(pdMS_TO_TICKS(1500));
 

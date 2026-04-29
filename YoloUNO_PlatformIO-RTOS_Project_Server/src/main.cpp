@@ -34,23 +34,22 @@ void setup()
     xTaskCreate(temp_humi_monitor,  "Task LCD Monitor",    4096, NULL, 3, NULL);
 
     // ── Fan Control: auto theo semaphore nhiệt độ, manual từ Web ─────────────
-    xTaskCreate(FanControlTask,     "Task Fan Control",    2048, NULL, 2, NULL);
+    xTaskCreate(FanControlTask,     "Task Fan Control",    4096, NULL, 2, NULL);
 
     // ── CoreIOT: nhận Shared Attributes từ Mosquitto → CoreIOT → ESP32-B ─────
     xTaskCreate(coreiot_task,       "Task CoreIOT",        8192, NULL, 2, NULL);
 
-    // ── TinyML: chạy inference trên dữ liệu cảm biến ────────────────────────
-    xTaskCreate(tiny_ml_task,       "Task TinyML",         4096, NULL, 2, NULL);
+    xTaskCreate(tiny_ml_task,       "Task TinyML",        8192, NULL, 2, NULL);
 }
 
 void loop()
 {
-    // WiFi reconnect logic
     if (check_info_File(1)) {
-        if (!Wifi_reconnect()) {
-            Webserver_stop();
-        }
+        Wifi_reconnect();
     }
-    // Web Server reconnect (AP mode luôn sẵn sàng)
+
+    // Webserver luôn chạy: AP mode → config WiFi, STA mode → dashboard
     Webserver_reconnect();
+
+    delay(1000);
 }
