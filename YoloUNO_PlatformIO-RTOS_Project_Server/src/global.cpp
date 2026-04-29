@@ -11,9 +11,11 @@ SemaphoreHandle_t semTempWarning  = xSemaphoreCreateBinary();
 SemaphoreHandle_t semTempCritical = xSemaphoreCreateBinary();
 
 // ─── Semaphore Độ Ẩm ─────────────────────────────────────────────────────────
-SemaphoreHandle_t semHumNormal    = xSemaphoreCreateBinary();
-SemaphoreHandle_t semHumWarning   = xSemaphoreCreateBinary();
-SemaphoreHandle_t semHumCritical  = xSemaphoreCreateBinary();
+SemaphoreHandle_t semHum90_100   = xSemaphoreCreateBinary();
+SemaphoreHandle_t semHum80_90    = xSemaphoreCreateBinary();
+SemaphoreHandle_t semHum50_80    = xSemaphoreCreateBinary();
+SemaphoreHandle_t semHum30_50    = xSemaphoreCreateBinary();
+SemaphoreHandle_t semHum0_30     = xSemaphoreCreateBinary();
 
 // ─── WiFi / CoreIOT Config ─────────────────────────────────────────────────────
 EventGroupHandle_t egWifiStatus = NULL;

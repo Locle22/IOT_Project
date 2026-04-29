@@ -25,9 +25,13 @@ extern SemaphoreHandle_t semTempCritical;
 
 // ─── Semaphore Độ Ẩm (Task 2 NeoPixel) ────────────────────────────────────────
 // Ngưỡng: Normal < 60% | Warning 60-80% | Critical >= 80%
-extern SemaphoreHandle_t semHumNormal;
-extern SemaphoreHandle_t semHumWarning;
-extern SemaphoreHandle_t semHumCritical;
+// ─── Semaphore Độ Ẩm (Task 2 NeoPixel) ────────────────────────────────────────
+extern SemaphoreHandle_t semHum0_30;
+extern SemaphoreHandle_t semHum30_50;
+extern SemaphoreHandle_t semHum50_80;
+extern SemaphoreHandle_t semHum80_90;
+extern SemaphoreHandle_t semHum90_100;
+
 
 // ─── WiFi / CoreIOT Config ─────────────────────────────────────────────────────
 // Cấu trúc chứa thông tin đăng nhập và máy chủ CoreIOT
