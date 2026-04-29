@@ -1,6 +1,7 @@
 #include "task_webserver.h"
 #include "task_check_info.h"
 #include "fan_monitor.h"
+#include "global.h"
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -113,6 +114,29 @@ void connnectWSV()
     // REST API endpoints
     server.on("/sensor", HTTP_GET, handleSensor);
     server.on("/action", HTTP_GET, handleAction);
+
+    // ── TinyML API  ─
+    server.on("/api/tinyml", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // Lấy metrics (thread-safe via Mutex)
+        TinyMLMetrics metrics = tinyml_get_metrics();
+
+        // is_fire = true nếu predicted_class == FIRE (1) VÀ trong vòng 5000ms
+        bool is_fire = (metrics.predicted_class == FIRE) && 
+            (millis() - metrics.last_fire_time < 5000);
+
+        // is_nuisance = true nếu predicted_class == NUISANCE (2) VÀ trong vòng 5000ms
+        bool is_nuisance = (metrics.predicted_class == NUISANCE) && 
+            (millis() - metrics.last_nuisance_time < 5000);
+
+        // Build JSON response đơn giản
+        StaticJsonDocument<64> doc;
+        doc["is_fire"] = is_fire;
+        doc["is_nuisance"] = is_nuisance;
+
+        String jsonStr;
+        serializeJson(doc, jsonStr);
+        request->send(200, "application/json", jsonStr);
+    });
 
     // Static files (nếu vẫn cần)
     server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
