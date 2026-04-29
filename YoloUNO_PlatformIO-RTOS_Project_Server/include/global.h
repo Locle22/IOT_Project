@@ -44,4 +44,8 @@ typedef struct {
 extern EventGroupHandle_t egWifiStatus;
 #define WIFI_CONNECTED_BIT BIT0
 
+// LCD backlight control từ webserver (semaphore)
+// Give = tắt backlight, Take = bật lại
+extern SemaphoreHandle_t semLcdOff;
+
 #endif

@@ -45,12 +45,12 @@ void handleAction(AsyncWebServerRequest *request)
         }
     }
     else if (dev == "lcd") {
-        // LCD backlight điều khiển qua bất kỳ task nào giữ reference
-        // Ở đây dùng Serial log — LCD task tự quản lý backlight theo state
-        if (state == "ON") {
-            Serial.println("[Web] LCD backlight ON");
-        } else {
+        if (state == "OFF") {
+            xSemaphoreGive(semLcdOff);  // Signal LCD task: tắt backlight
             Serial.println("[Web] LCD backlight OFF");
+        } else {
+            xSemaphoreTake(semLcdOff, 0);  // Xóa signal → bật lại
+            Serial.println("[Web] LCD backlight ON");
         }
     }
 
@@ -123,7 +123,6 @@ void connnectWSV()
     });
 
     server.begin();
-    ElegantOTA.begin(&server);
     webserver_isrunning = true;
     Serial.println("[WebServer] Started on AP: " + WiFi.softAPIP().toString());
 }
@@ -140,5 +139,5 @@ void Webserver_reconnect()
     if (!webserver_isrunning) {
         connnectWSV();
     }
-    ElegantOTA.loop();
+
 }

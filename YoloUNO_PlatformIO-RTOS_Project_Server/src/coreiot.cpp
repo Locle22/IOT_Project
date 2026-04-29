@@ -2,12 +2,11 @@
 #include "task_check_info.h"
 #include <ArduinoJson.h>
 
-// ─── CoreIOT / MQTT Server Config ────────────────────────────────────────────
-// QUAN TRỌNG: Điền IP Mosquitto broker (máy Windows của bạn) vào đây
-// Sau khi cấu hình qua Web UI thì server/port lấy từ CORE_IOT_SERVER/PORT
-const char* coreIOT_Server = "10.235.76.226";   // ← thay bằng IP Mosquitto
-const char* coreIOT_Token  = "g7drm1amhd3dchr379xu";
-const int   mqttPort       = 1883;
+// ─── TinyBroker Config (Server side — port 1884) ─────────────────────────────
+// ⚠️ Config gốc YoloUNO đã lưu trong CONFIG_BACKUP.md
+const char* coreIOT_Server = "192.168.1.190";  // ← IP máy tính chạy TinyBroker
+const char* coreIOT_Token  = "";               // TinyBroker: anonymous
+const int   mqttPort       = 1884;             // Port 1884 (Server broker)
 
 WiFiClient  espClient;
 PubSubClient client(espClient);
@@ -47,6 +46,33 @@ void callback(char* topic, byte* payload, unsigned int length)
         return;
     }
 
+    // ── Xử lý sensor/data từ TinyGateway: {temperature, humidity} ────────────
+    if (strcmp(topic, "sensor/data") == 0) {
+        float newTemp = doc["temperature"] | -1.0f;
+        float newHum  = doc["humidity"]    | -1.0f;
+
+        if (newTemp < 0 && newHum < 0) return;
+
+        SensorData sd = {0.0f, 0.0f};
+        xQueuePeek(xQueueSensorData, &sd, 0);
+        if (newTemp >= 0) sd.temp = newTemp;
+        if (newHum  >= 0) sd.hum  = newHum;
+
+        xQueueOverwrite(xQueueSensorData, &sd);
+        Serial.printf("[Sensor] From Gateway: T=%.1f°C H=%.1f%%\n", sd.temp, sd.hum);
+
+        // Cập nhật semaphore (dùng chung logic với attributes)
+        bool tempCritical = (sd.temp >= 38.0f);
+        bool tempWarning  = (!tempCritical && sd.temp >= 30.0f);
+        setSemaphoreByLevel(semTempNormal, semTempWarning, semTempCritical,
+                            tempCritical, tempWarning);
+
+        bool humCritical = (sd.hum >= 80.0f);
+        bool humWarning  = (!humCritical && sd.hum >= 60.0f);
+        setSemaphoreByLevel(semHumNormal, semHumWarning, semHumCritical,
+                            humCritical, humWarning);
+        return;
+    }
     // ── Xử lý Shared Attribute Update: {remote_temp, remote_hum} ─────────────
     if (strstr(topic, "v1/devices/me/attributes") != nullptr) {
         float newTemp = -1.0f, newHum = -1.0f;
@@ -106,18 +132,16 @@ void callback(char* topic, byte* payload, unsigned int length)
 void reconnect()
 {
     while (!client.connected()) {
-        Serial.print("[MQTT] Connecting...");
+        Serial.print("[MQTT] Connecting to TinyBroker...");
         String clientId = "ESP32B-" + String(random(0xffff), HEX);
-        // Đọc token từ config để xác thực với broker
-        NetConfig_t mqttCfg;
-        loadNetConfig(&mqttCfg);
-        const char* token = (strlen(mqttCfg.coreToken) == 0) ? coreIOT_Token : mqttCfg.coreToken;
-        if (client.connect(clientId.c_str(), token, NULL)) {
+
+        // TinyBroker: anonymous, không cần token
+        if (client.connect(clientId.c_str())) {
             Serial.println(" connected!");
-            // Subscribe cả RPC lẫn Attribute update
-            client.subscribe("v1/devices/me/rpc/request/+");
-            client.subscribe("v1/devices/me/attributes");  // Shared Attr
-            Serial.println("[MQTT] Subscribed: RPC + Attributes");
+            // Subscribe nhận data cảm biến từ TinyGateway
+            client.subscribe("sensor/data");
+            client.subscribe("v1/devices/me/attributes");
+            Serial.println("[MQTT] Subscribed: sensor/data + attributes");
         } else {
             Serial.printf("[MQTT] failed (rc=%d), retry in 5s\n", client.state());
             vTaskDelay(pdMS_TO_TICKS(5000));

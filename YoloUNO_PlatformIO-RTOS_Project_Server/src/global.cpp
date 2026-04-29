@@ -17,3 +17,7 @@ SemaphoreHandle_t semHumCritical  = xSemaphoreCreateBinary();
 
 // ─── WiFi / CoreIOT Config ─────────────────────────────────────────────────────
 EventGroupHandle_t egWifiStatus = NULL;
+
+// ─── LCD Backlight Control ─────────────────────────────────────────────────────
+// Binary semaphore: Give = yêu cầu tắt, không có = bật
+SemaphoreHandle_t semLcdOff = xSemaphoreCreateBinary();
