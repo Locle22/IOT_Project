@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>EdgeNode IoT - ESP32 Smart Hub</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#1e293b",
+                        "surface": "#fbf8fa",
+                        "primary": "#076afc",
+                        "primary-fixed": "#e6f0ff",
+                        "secondary-container": "#d0e1fb",
+                        "surface-container-high": "#eae7e9",
+                        "on-surface-variant": "#45474c",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-surface": "#1b1b1d",
+                        "surface-container-low": "#f5f3f4",
+                        "surface-container": "#f0edef",
+                        "error": "#ba1a1a",
+                        "on-error-container": "#93000a",
+                        "background": "#F7F9FC",
+                        "outline": "#75777d",
+                        "error-container": "#ffdad6",
+                        "secondary": "#505f76",
+                    },
+                    fontFamily: {
+                        "h3": ["Inter"], "code": ["monospace"], "body-md": ["Inter"],
+                        "display": ["Inter"], "h2": ["Inter"], "body-sm": ["Inter"],
+                        "body-lg": ["Inter"], "label-caps": ["Inter"], "h1": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="font-body-md text-on-surface">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-40 flex items-center justify-between px-6 py-3 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="flex items-center gap-4">
+            <span class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">hub</span>
+                ESP32 Smart Hub
+            </span>
+            <div class="hidden md:flex gap-6 items-center ml-8">
+                <a id="nav-dashboard" class="text-primary border-b-2 border-primary pb-1 font-h3 font-semibold cursor-pointer transition-colors" onclick="switchView('dashboard')">Dashboard</a>
+                <button id="nav-log" class="text-slate-500 hover:text-primary transition-colors font-h3 font-medium cursor-pointer" onclick="switchView('log')">Predict Log</button>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-primary transition-all" onclick="toggleModal('settings-modal')">
+                <span class="material-symbols-outlined" data-icon="settings">settings</span>
+            </button>
+            <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-200">
+                <img src="https://ui-avatars.com/api/?name=Admin&background=076afc&color=fff" alt="Admin"/>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Canvas -->
+    <main class="max-w-[1200px] mx-auto p-6 md:p-8">
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" class="view-section">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6">
+                
+                <!-- Card 1: System Time -->
+              <div class="xl:col-span-12 iot-card p-6 flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-primary-fixed to-white border-none shadow-md">
+                  <div>
+                      <h3 class="font-label-caps text-on-surface-variant uppercase tracking-wider mb-1">System Clock</h3>
+                      <p class="font-body-sm text-slate-500" id="date-display">--/--/----</p>
+                  </div>
+                  <div class="font-code text-5xl font-bold text-primary tracking-tight" id="time-display">
+                      00:00:00
+                  </div>
+              </div>
+
+                <!-- Card 2: Environment -->
+                <div class="xl:col-span-8 iot-card p-6 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <h3 class="font-label-caps text-on-surface-variant uppercase tracking-wider mb-1">Environment</h3>
+                            <p class="font-body-sm text-slate-500">Real-time DHT22 Readings</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-300" data-icon="thermostat">thermostat</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row items-center justify-around gap-12 py-4">
+                        <!-- Temp -->
+                        <div class="flex flex-col items-center">
+                            <div class="relative w-40 h-40 flex items-center justify-center">
+                                <svg class="w-full h-full -rotate-90">
+                                    <circle class="text-slate-100" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" stroke-width="6"></circle>
+                                    <circle class="text-primary transition-all duration-1000" cx="80" cy="80" fill="transparent" id="temp-ring" r="70" stroke="currentColor" stroke-dasharray="440" stroke-dashoffset="310" stroke-width="6" stroke-linecap="round"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-display font-display text-slate-800" id="temp-val">--</span>
+                                    <span class="font-label-caps text-slate-400 mt-1">° Celsius</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Humidity -->
+                        <div class="flex flex-col items-center">
+                            <div class="relative w-40 h-40 flex items-center justify-center">
+                                <svg class="w-full h-full -rotate-90">
+                                    <circle class="text-slate-100" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" stroke-width="6"></circle>
+                                    <circle class="text-[#06b6d4] transition-all duration-1000" cx="80" cy="80" fill="transparent" id="hum-ring" r="70" stroke="currentColor" stroke-dasharray="440" stroke-dashoffset="154" stroke-width="6" stroke-linecap="round"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-display font-display text-slate-800" id="hum-val">--</span>
+                                    <span class="font-label-caps text-slate-400 mt-1">% Humidity</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: TinyML AI -->
+                <div class="xl:col-span-4 iot-card p-6 flex flex-col bg-white">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 class="font-label-caps text-on-surface-variant uppercase tracking-wider mb-1">Inference Engine</h3>
+                            <p class="font-body-sm text-slate-500">TensorFlow Lite Micro</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-300" data-icon="psychology">psychology</span>
+                    </div>
+                    <div class="flex-1 rounded-xl bg-slate-50 p-6 flex flex-col items-center justify-center text-center transition-colors duration-500 border border-slate-100 shadow-inner" id="ml-status-bg">
+                        <span class="material-symbols-outlined text-5xl mb-4 text-slate-400" data-icon="waves" id="ml-icon">waves</span>
+                        <h2 class="font-label-caps text-slate-500 uppercase tracking-widest mb-2">Predicted State</h2>
+                        <div class="font-h1 text-3xl font-bold tracking-tight mb-8" id="ml-state">Waiting...</div>
+                        
+                        <div class="w-full space-y-2">
+                            <div class="flex justify-between text-xs font-semibold text-slate-600 uppercase">
+                                <span>Confidence</span>
+                                <span id="ml-confidence-text">--%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                                <div class="bg-primary h-full transition-all duration-700 ease-out" id="ml-confidence-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Fan Control -->
+                <div class="xl:col-span-6 iot-card p-6 bg-white">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="font-h2 text-h2 text-slate-800">Air Flow Control</h3>
+                        <span class="material-symbols-outlined text-slate-300">toys_fan</span>
+                    </div>
+                    <div class="space-y-8">
+                        <div>
+                            <label class="block font-label-caps text-slate-500 mb-3 uppercase tracking-wider">Operation Mode</label>
+                            <div class="flex p-1.5 bg-slate-100 rounded-xl">
+                                <button id="fan-off" class="flex-1 py-2 font-h3 text-sm font-semibold rounded-lg transition-all fan-btn-off" onclick="setFanState('OFF')">OFF</button>
+                                <button id="fan-on" class="flex-1 py-2 font-h3 text-sm font-semibold rounded-lg transition-all fan-btn-on" onclick="setFanState('ON')">ON</button>
+                                <button id="fan-auto" class="flex-1 py-2 font-h3 text-sm font-semibold rounded-lg transition-all fan-btn-auto" onclick="setFanState('AUTO')">AUTO</button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-4">
+                                <label class="font-label-caps text-slate-500 uppercase tracking-wider">Fan Speed (PWM)</label>
+                                <span class="font-code font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded" id="speed-display">255</span>
+                            </div>
+                            <input class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary" id="fan-speed" max="255" min="0" oninput="updateFanSpeed(this.value)" type="range" value="255"/>
+                            <div class="flex justify-between mt-2 text-[10px] text-slate-400 font-bold uppercase">
+                                <span>Min</span>
+                                <span>Mid</span>
+                                <span>Max</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Display Output -->
+                <div class="xl:col-span-6 iot-card p-6 flex flex-col justify-center bg-white">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="font-h2 text-h2 text-slate-800">Display Output</h3>
+                        <span class="material-symbols-outlined text-slate-300">dvr</span>
+                    </div>
+                    
+                    <div class="flex-1 space-y-4">
+                        <div class="flex items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex gap-5 items-center">
+                                <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-blue-600 text-3xl">lightbulb</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-h3 text-lg font-bold text-slate-800">Backlight</h4>
+                                    <p class="text-sm text-slate-500 mt-1">Toggle I2C 16x2 LCD Panel</p>
+                                </div>
+                            </div>
+                            <button id="backlight-toggle" class="w-14 h-7 rounded-full bg-slate-300 relative transition-colors duration-300 focus:outline-none" onclick="toggleBacklight()">
+                                <div class="w-6 h-6 bg-white border border-gray-300 rounded-full shadow-sm absolute top-[2px] left-[2px] transition-transform duration-300"></div>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex items-center gap-5">
+                                <div class="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-emerald-600 text-3xl">memory</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-h3 text-lg font-bold text-slate-800">System Memory</h4>
+                                    <p class="text-sm text-slate-500 mt-1">Heap Free Allocation</p>
+                                </div>
+                            </div>
+                            <p id="heap-free" class="font-code text-xl font-bold text-emerald-600">--- KB</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- LOG VIEW -->
+        <div id="log-view" class="view-section hidden">
+            <div class="iot-card bg-white rounded-xl overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+                <div class="px-6 py-5 border-b border-gray-100 flex items-center gap-3 shrink-0 bg-slate-50/50">
+                    <div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary text-[18px]">history</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 tracking-tight">Prediction History</h2>
+                        <p class="text-xs font-medium text-gray-500">Last 20 Edge AI inference logs</p>
+                    </div>
+                </div>
+                
+                <div class="p-6 overflow-y-auto">
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-slate-200">Time</th>
+                                    <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-slate-200">Temp (°C)</th>
+                                    <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-slate-200">Hum (%)</th>
+                                    <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-slate-200">Prediction Label</th>
+                                    <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-slate-200">Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody id="log-table-body" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="5" class="px-5 py-10 text-center text-sm font-medium text-gray-400">Loading prediction logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center hidden">
+        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="toggleModal('settings-modal')"></div>
+        <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl modal-content m-4 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-h2 text-xl font-bold text-slate-800">System Configuration</h3>
+                <button class="text-slate-400 hover:text-red-500 transition-colors" onclick="toggleModal('settings-modal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form id="settings-form" class="p-6 space-y-5">
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Wi-Fi SSID</label>
+                        <input type="text" id="wifi-ssid" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Enter network name">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                        <input type="password" id="wifi-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
+                    </div>
+                    <div class="col-span-2 border-t border-slate-100 pt-4">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">CoreIOT Token</label>
+                        <input type="text" id="coreiot-token" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Your device token">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Server IP</label>
+                        <input type="text" id="server-ip" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="192.168.1.100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Port</label>
+                        <input type="number" id="server-port" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="1883">
+                    </div>
+                </div>
+                <div class="pt-6 flex gap-4">
+                    <button type="button" class="w-1/3 py-3 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 rounded-xl font-semibold shadow-sm transition-all" onclick="alert('Rebooting device...')">
+                        Reboot
+                    </button>
+                    <button type="submit" class="w-2/3 py-3 bg-primary text-white hover:bg-[#0658d9] rounded-xl font-semibold shadow-lg transition-all">
+                        Save & Provision
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+/* ==================================================
+   ESP32 Smart Hub - Custom Styles
+   ================================================== */
+
+:root {
+  --primary: #076afc;
+}
+
+/* Base Card Enhancements */
+.iot-card {
+    background-color: #ffffff;
+    border: 2px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.05);
+    transition: border-color 0.2s ease;
+}
+
+.iot-card:hover {
+    box-shadow: 0 6px 20px rgba(7, 106, 252, 0.12);
+}
+
+/* View Transitions (Dashboard <-> Log View) */
+#dashboard-view,
+#log-view {
+    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fan Segmented Control Buttons */
+#fan-off.active { background-color: #ef4444; color: white; border-color: #ef4444; }
+#fan-on.active { background-color: #10b981; color: white; border-color: #10b981; }
+#fan-auto.active { background-color: var(--primary); color: white; border-color: var(--primary); }
+
+/* Custom Range Slider (Fan Speed) */
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+}
+input[type=range]:focus { outline: none; }
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(7, 106, 252, 0.4);
+    margin-top: -5px; 
+    transition: transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:active { transform: scale(1.15); }
+
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8px;
+    cursor: pointer;
+    background: #e2e8f0;
+    border-radius: 4px;
+}
+
+/* Prediction Badges (Log Table) */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid transparent;
+}
+
+.badge-background { background-color: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+.badge-fire { background-color: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+.badge-nuisance { background-color: #fffbeb; color: #d97706; border-color: #fcd34d; }
+
+/* Mini Progress Bar for Confidence in Table */
+.mini-progress {
+    width: 60px;
+    height: 6px;
+    background-color: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mini-progress-bar {
+    height: 100%;
+    background-color: var(--primary);
+    border-radius: 3px;
+    transition: width 0.5s ease-out;
+}
+
+/* Custom Table Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f8fafc; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Backlight Toggle Fixed */
+#backlight-toggle > div {
+    /* Button: w-14 (56px) h-7 (28px) */
+    /* Thumb: w-6 (24px) h-6 (24px) */
+    /* Available travel: 56 - 24 - 2 - 2 = 28px */
+    transform: translateX(0px);
+}
+#backlight-toggle > div.translate-x-full {
+    transform: translateX(28px);
+}
