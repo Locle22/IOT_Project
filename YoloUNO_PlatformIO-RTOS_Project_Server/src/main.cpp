@@ -17,6 +17,9 @@ void setup()
     Serial.begin(115200);
     // Khởi tạo EventGroup hệ thống wifi trước khi làm gì khác
     egWifiStatus = xEventGroupCreate();
+    // Khởi tạo TinyML synchronization primitives
+    initTinyMLSync();
+
 
     // Khởi động LittleFS và nạp cấu hình WiFi/CoreIOT đã lưu
     check_info_File(0);

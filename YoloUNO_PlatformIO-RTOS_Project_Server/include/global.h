@@ -2,6 +2,7 @@
 #define __GLOBAL_H__
 
 #include <Arduino.h>
+#include <ArduinoJson.h> 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -51,5 +52,40 @@ extern EventGroupHandle_t egWifiStatus;
 // LCD backlight control từ webserver (semaphore)
 // Give = tắt backlight, Take = bật lại
 extern SemaphoreHandle_t semLcdOff;
+
+
+// ─── TinyML 3-Class Classification ──────────────────────────────────────────
+enum MLClass { 
+    BACKGROUND = 0, 
+    FIRE = 1, 
+    NUISANCE = 2 
+};
+
+// Metrics để lưu kết quả TinyML cho predict log
+typedef struct {
+    char time[9];
+    float temp;
+    float hum;
+    uint8_t predicted_class;
+    float confidence;
+} LogEntry;
+#define MAX_LOGS 20
+
+// Chỉ lưu những gì Frontend cần
+typedef struct {
+    uint8_t predicted_class; 
+    float confidence;        
+} TinyMLMetrics;
+
+extern SemaphoreHandle_t semTinyML;
+
+void tinyml_lock();
+void tinyml_unlock();
+
+void initTinyMLSync();
+void tinyml_update_all(uint8_t predicted_class, float confidence, float temp, float hum);
+
+TinyMLMetrics tinyml_get_metrics();
+int tinyml_get_logs_json(char* buffer, size_t maxSize);
 
 #endif

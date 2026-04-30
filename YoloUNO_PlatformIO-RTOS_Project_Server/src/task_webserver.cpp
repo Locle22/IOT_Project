@@ -122,6 +122,38 @@ void connnectWSV()
         request->send(LittleFS, "/styles.css", "text/css");
     });
 
+    // TinyML & System Info APIs
+    server.on("/api/tinyml", HTTP_GET, [](AsyncWebServerRequest *request) {
+        TinyMLMetrics metrics = tinyml_get_metrics();
+        char jsonBuf[128];
+        snprintf(jsonBuf, sizeof(jsonBuf), 
+                 "{\"class\":%d,\"confidence\":%.3f}", 
+                 metrics.predicted_class, metrics.confidence);
+        request->send(200, "application/json", jsonBuf);
+    });
+
+    server.on("/api/sysinfo", HTTP_GET, [](AsyncWebServerRequest *request) {
+        char jsonBuf[64];
+        snprintf(jsonBuf, sizeof(jsonBuf), "{\"heap_free\":%u}", ESP.getFreeHeap());
+        request->send(200, "application/json", jsonBuf);
+    });
+
+    // get 20 latest logs in JSON format
+    server.on("/api/logs", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // char jsonBuffer[2048]; 
+        // tinyml_get_logs_json(jsonBuffer, sizeof(jsonBuffer));
+        // request->send(200, "application/json", jsonBuffer);
+        // malloc to get 2kb from heap, avoid stack overflow
+        char* jsonBuffer = (char*)malloc(2048); 
+        if (jsonBuffer == NULL) {
+            request->send(500, "text/plain", "Memory Error");
+            return;
+        }
+        tinyml_get_logs_json(jsonBuffer, 2048);
+        request->send(200, "application/json", jsonBuffer);
+        free(jsonBuffer);
+    });
+
     server.begin();
     webserver_isrunning = true;
     Serial.println("[WebServer] Started on AP: " + WiFi.softAPIP().toString());
