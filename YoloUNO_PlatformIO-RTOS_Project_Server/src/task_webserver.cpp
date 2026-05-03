@@ -89,9 +89,19 @@ void connnectWSV()
     ws.onEvent(onEvent);
     server.addHandler(&ws);
 
-    // Trang dashboard chính (từ LittleFS)
+    // Trang dashboard: AP → frontend cũ (offline), STA → frontend mới (cần internet)
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/index.html", "text/html");
+        // Kiểm tra bằng host header hoặc remote IP subnet
+        String host = request->host();
+        bool isAP = host.startsWith("192.168.4.");
+        
+        Serial.printf("[Web] Host: %s → %s\n", host.c_str(), isAP ? "AP" : "STA");
+        
+        if (isAP) {
+            request->send(LittleFS, "/index_ap.html", "text/html");
+        } else {
+            request->send(LittleFS, "/index.html", "text/html");
+        }
     });
 
     // Endpoint lưu cấu hình từ giao diện Web

@@ -1,11 +1,11 @@
 #include "temp_humi_monitor.h"
 #include "fan_monitor.h"
 
-// I2C pins của YOLO UNO
-#define I2C_SDA 11
-#define I2C_SCL 12
+// I2C pins của ESP32-S3
+#define I2C_SDA 8
+#define I2C_SCL 9
 // LCD địa chỉ I2C, 16 cột 2 hàng
-#define LCD_ADDR 0x21
+#define LCD_ADDR 0x27
 
 // ─── Custom Characters (5x8 pixel) ──────────────────────────────────────────
 // Icon nhiệt kế 🌡️

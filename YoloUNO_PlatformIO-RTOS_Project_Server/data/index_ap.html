@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 - Cau hinh</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e90ff, #00bfff, #00e5ff); }
+    .card { background: rgba(255,255,255,0.95); border-radius: 20px; padding: 40px 35px; width: 90%; max-width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; }
+    .logo { font-size: 48px; margin-bottom: 8px; }
+    h2 { color: #1e90ff; font-size: 1.4em; margin-bottom: 6px; }
+    .sub { color: #888; font-size: 13px; margin-bottom: 25px; }
+    .field { position: relative; margin-bottom: 14px; }
+    .field i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; }
+    input { width: 100%; padding: 13px 14px 13px 42px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 15px; outline: none; transition: 0.3s; background: #fafafa; }
+    input:focus { border-color: #1e90ff; background: #fff; box-shadow: 0 0 8px rgba(30,144,255,0.2); }
+    input::placeholder { color: #aaa; }
+    .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #1e90ff, #00bfff); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: 0.3s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30,144,255,0.4); }
+    .btn:active { transform: scale(0.98); }
+    #msg { margin-top: 14px; font-size: 14px; font-weight: 600; min-height: 20px; }
+    .ok { color: #11b911; } .err { color: #dc3545; } .wait { color: #f0ad4e; }
+    .footer { margin-top: 20px; font-size: 11px; color: #bbb; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">⚙️</div>
+    <h2>Cau Hinh Thiet Bi</h2>
+    <p class="sub">Ket noi WiFi & MQTT Broker</p>
+
+    <form id="f">
+      <div class="field"><i>📶</i><input id="ssid" type="text" placeholder="Ten WiFi (SSID)" required></div>
+      <div class="field"><i>🔒</i><input id="pass" type="password" placeholder="Mat khau WiFi"></div>
+      <div class="field"><i>🔑</i><input id="token" type="text" placeholder="Token CoreIOT"></div>
+      <div class="field"><i>🌐</i><input id="server" type="text" placeholder="MQTT Server (VD: 192.168.1.100)" required></div>
+      <div class="field"><i>⚡</i><input id="port" type="text" placeholder="Port (VD: 1884)" required></div>
+      <button class="btn" type="submit">🚀 Luu & Ket Noi</button>
+    </form>
+    <div id="msg"></div>
+    <div class="footer">ESP32 Smart Hub &mdash; AP Mode</div>
+  </div>
+
+  <script>
+    document.getElementById('f').onsubmit = function(e) {
+      e.preventDefault();
+      var m = document.getElementById('msg');
+      m.className = 'wait';
+      m.textContent = '🔄 Dang gui...';
+
+      var q = 'ssid=' + encodeURIComponent(document.getElementById('ssid').value)
+            + '&pass=' + encodeURIComponent(document.getElementById('pass').value)
+            + '&token=' + encodeURIComponent(document.getElementById('token').value)
+            + '&server=' + encodeURIComponent(document.getElementById('server').value)
+            + '&port=' + encodeURIComponent(document.getElementById('port').value);
+
+      fetch('/connect?' + q)
+        .then(function(r) { return r.text(); })
+        .then(function() {
+          m.className = 'ok';
+          m.textContent = '✅ Thanh cong! Thiet bi dang khoi dong lai...';
+        })
+        .catch(function() {
+          m.className = 'err';
+          m.textContent = '❌ Loi ket noi!';
+        });
+    };
+  </script>
+</body>
+</html>
