@@ -4,7 +4,7 @@
 #include "neo_blinky.h"
 #include "temp_humi_monitor.h"
 #include "fan_monitor.h"
-#include "coreiot.h"
+#include "task_core_iot.h"
 #include "tinyml.h"
 
 // include tasks
@@ -37,7 +37,7 @@ void setup()
     xTaskCreate(FanControlTask,     "Task Fan Control",    2048, NULL, 2, NULL);
 
     // ── CoreIOT: nhận Shared Attributes từ Mosquitto → CoreIOT → ESP32-B ─────
-    xTaskCreate(coreiot_task,       "Task CoreIOT",        8192, NULL, 2, NULL);
+    xTaskCreate(Task_CoreIOT,       "Task CoreIOT",        8192, NULL, 2, NULL);
 
     // ── TinyML: chạy inference trên dữ liệu cảm biến ────────────────────────
     xTaskCreate(tiny_ml_task,       "Task TinyML",         4096, NULL, 2, NULL);
