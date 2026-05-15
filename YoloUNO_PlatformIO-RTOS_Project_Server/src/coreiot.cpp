@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 
 // ─── TinyBroker Config (Server side — port 1884) ─────────────────────────────
-const char* coreIOT_Server = "192.168.1.190";  // ← IP máy tính chạy TinyBroker
+const char* coreIOT_Server = "192.168.1.239";  // ← IP máy tính chạy TinyBroker
 const char* coreIOT_Token  = "";               // TinyBroker: anonymous
 const int   mqttPort       = 1884;             // Port 1884 (Server broker)
 

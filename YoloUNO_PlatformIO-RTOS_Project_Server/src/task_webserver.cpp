@@ -26,21 +26,24 @@ void handleAction(AsyncWebServerRequest *request)
     String state = request->hasArg("state") ? request->arg("state") : "";
 
     if (dev == "fan") {
+        FanCommand cmd;
         if (state == "ON") {
-            FanSetManualOverride(true, true);
-            FanON();
+            cmd = {FAN_CMD_MANUAL_ON, 0};
+            xQueueOverwrite(xQueueFanCmd, &cmd);
             Serial.println("[Web] Fan ON (manual)");
         } else if (state == "OFF") {
-            FanSetManualOverride(true, false);
-            FanOFF();
+            cmd = {FAN_CMD_MANUAL_OFF, 0};
+            xQueueOverwrite(xQueueFanCmd, &cmd);
             Serial.println("[Web] Fan OFF (manual)");
         } else if (state == "AUTO") {
-            FanClearManualOverride();
+            cmd = {FAN_CMD_AUTO, 0};
+            xQueueOverwrite(xQueueFanCmd, &cmd);
             Serial.println("[Web] Fan → AUTO mode");
         } else if (state == "SPEED" && request->hasArg("value")) {
             int speed = request->arg("value").toInt();
             speed = constrain(speed, 0, 255);
-            FanSetSpeed((uint8_t)speed);
+            cmd = {FAN_CMD_SET_SPEED, (uint8_t)speed};
+            xQueueOverwrite(xQueueFanCmd, &cmd);
             Serial.printf("[Web] Fan speed → %d\n", speed);
         }
     }

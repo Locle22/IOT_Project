@@ -37,6 +37,6 @@ void temp_humi_monitor(void *pvParameters)
         xQueueOverwrite(xQueueSensorData, &sd);
 
         Serial.printf("[DHT20] T=%.1f°C  H=%.1f%%\n", temperature, humidity);
-        vTaskDelay(pdMS_TO_TICKS(5000));  // Đọc mỗi 5 giây
+        vTaskDelay(pdMS_TO_TICKS(500));  // Đọc mỗi 5 giây
     }
 }

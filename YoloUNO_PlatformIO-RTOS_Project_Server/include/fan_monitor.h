@@ -10,16 +10,25 @@
 #define PWM_CHANNEL     0
 #define PWM_RESOLUTION  8
 
-void FanInit();
-void FanON();
-void FanOFF();
-void FanSetSpeed(uint8_t speed);
-uint8_t FanGetSpeed();
+// ─── Fan Command (truyền qua Queue, thay thế biến toàn cục) ─────────────────
+typedef enum {
+    FAN_CMD_AUTO,       // Chế độ tự động theo nhiệt độ
+    FAN_CMD_MANUAL_ON,  // Bật thủ công
+    FAN_CMD_MANUAL_OFF, // Tắt thủ công
+    FAN_CMD_SET_SPEED   // Đặt tốc độ PWM
+} FanCmdType;
 
-void FanSetManualOverride(bool enabled, bool manualState);
-void FanClearManualOverride();
-bool FanIsManualOverrideEnabled();
+typedef struct {
+    FanCmdType cmd;
+    uint8_t    speed;   // Chỉ dùng khi cmd == FAN_CMD_SET_SPEED
+} FanCommand;
+
+// Queue nhận lệnh từ WebServer / CoreIOT → FanControlTask
+extern QueueHandle_t xQueueFanCmd;
+
+void FanInit();
 bool FanGetState();
+uint8_t FanGetSpeed();
 
 void FanControlTask(void *pvParameters);
 

@@ -40,7 +40,7 @@ void setupTinyML()
     input = interpreter->input(0);
     output = interpreter->output(0);
 
-    Serial.println("TensorFlow Lite Micro initialized on ESP32.");
+    Serial.printf("TensorFlow Lite Micro initialized. Input dimensions: %d\n", input->dims->data[1]);
 }
 
 // Helper: find the label with the highest probability (argmax) and also return the confidence score
@@ -60,13 +60,37 @@ static uint8_t argmax(float* output_data, int size, float* max_val) {
 void tiny_ml_task(void *pvParameters) {
     setupTinyML();
 
+    float prev_temp = -1.0f; 
+    float prev_hum  = -1.0f;
+    unsigned long prev_time_ms = 0;
+
     while (1) {
         SensorData sd = {0.0f, 0.0f};
-        // Use xQueuePeek to read the latest sensor data without removing it from the queue
+        
         if (xQueuePeek(xQueueSensorData, &sd, 0) == pdTRUE) {
             
+            unsigned long current_time_ms = millis();
+            float temp_rate_per_sec = 0.0f;
+            float humi_rate_per_sec  = 0.0f;
+
+            // Only calculate rates if we have valid previous readings and time
+            if (prev_temp != -1.0f && prev_hum != -1.0f && prev_time_ms != 0) {
+                float delta_t_sec = (current_time_ms - prev_time_ms) / 1000.0f;
+                if (delta_t_sec > 0.0f) {
+                    temp_rate_per_sec = (sd.temp - prev_temp) / delta_t_sec;
+                    humi_rate_per_sec  = (sd.hum - prev_hum) / delta_t_sec;
+                }
+            }
+
+            // Always update previous values for the next iteration
+            prev_temp = sd.temp;
+            prev_hum  = sd.hum;
+            prev_time_ms = current_time_ms;
+
             input->data.f[0] = sd.temp;
             input->data.f[1] = sd.hum;
+            input->data.f[2] = temp_rate_per_sec;
+            input->data.f[3] = humi_rate_per_sec;
 
             // Run inference
             unsigned long start_us = micros();
@@ -86,9 +110,10 @@ void tiny_ml_task(void *pvParameters) {
                 // Update metrics and log entry
                 tinyml_update_all(predicted_class, confidence_score, sd.temp, sd.hum);
 
-                // Export serial for Python Datalogger
-                Serial.printf("[TINYML_LOG],%.2f,%.2f,%d,%.4f,%.4f,%.4f,%.4f,%.2f,%u\n",
-                              sd.temp, sd.hum, predicted_class, confidence_score, 
+                // Format print serial and log
+                Serial.printf("[TINYML_LOG],%.2f,%.2f,%.4f,%.4f,%d,%.4f,%.4f,%.4f,%.4f,%.2f,%u\n",
+                              sd.temp, sd.hum, temp_rate_per_sec, humi_rate_per_sec, 
+                              predicted_class, confidence_score, 
                               prob_bg, prob_nuisance, prob_fire, duration_ms, arena_used);
             } else {
                 error_reporter->Report("Inference failed");

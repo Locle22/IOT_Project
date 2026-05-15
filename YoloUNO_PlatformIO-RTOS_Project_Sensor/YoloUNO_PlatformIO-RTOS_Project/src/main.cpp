@@ -25,14 +25,15 @@ void setup()
     // ── Task: Đọc DHT20 → Queue ──────────────────────────────────────────────
     xTaskCreate(temp_humi_monitor, "Task DHT20",    4096, NULL, 3, NULL);
 
-    // ── Task: Đọc Queue → Publish MQTT Telemetry ─────────────────────────────
-    xTaskCreate(coreiot_task,      "Task CoreIOT",  8192, NULL, 2, NULL);
+     // ── Task: IoT Publishing
+    xTaskCreate(Task_CoreIOT,      "Task CoreIOT",  8192, NULL, 2, NULL);
 
     // ── Task: LED heartbeat (báo hệ thống sống) ─────────────────────────────
     xTaskCreate(led_blinky,        "Task LED",      2048, NULL, 1, NULL);
 
     // ── Task: NeoPixel heartbeat ─────────────────────────────────────────────
     xTaskCreate(neo_blinky,        "Task NeoPixel", 2048, NULL, 1, NULL);
+
 }
 
 void loop()

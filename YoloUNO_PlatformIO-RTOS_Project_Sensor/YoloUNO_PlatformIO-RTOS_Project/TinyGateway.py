@@ -20,7 +20,7 @@ LOCAL_TOPIC = "v1/devices/me/telemetry"   # Topic ESP32-A publish
 # CoreIOT (cloud)
 COREIOT_HOST = "app.coreiot.io"
 COREIOT_PORT = 1883
-ACCESS_TOKEN = "x6Ng41BBGZro4aULQbOu"       # ← ĐỔI thành Access Token device trên CoreIOT
+ACCESS_TOKEN = "x6Ng41BBGZro4aULQbOu"      
 COREIOT_TOPIC = "v1/devices/me/telemetry"
 
 # ─── CLIENT LÊN COREIOT ──────────────────────────────────

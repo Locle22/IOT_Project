@@ -4,7 +4,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "global.h"
 
-#define NEO_PIN    45
+#define NEO_PIN    48
 #define LED_COUNT  1
 
 void neo_blinky(void *pvParameters);

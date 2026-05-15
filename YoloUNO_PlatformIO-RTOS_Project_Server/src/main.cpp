@@ -17,9 +17,9 @@ void setup()
     Serial.begin(115200);
     // Khởi tạo EventGroup hệ thống wifi trước khi làm gì khác
     egWifiStatus = xEventGroupCreate();
-    // Khởi tạo TinyML synchronization primitives
-    initTinyMLSync();
 
+    // Khởi tạo TinyML Mutex và Queue (phải trước khi tạo task)
+    initTinyMLSync();
 
     // Khởi động LittleFS và nạp cấu hình WiFi/CoreIOT đã lưu
     check_info_File(0);
@@ -34,22 +34,23 @@ void setup()
     xTaskCreate(temp_humi_monitor,  "Task LCD Monitor",    4096, NULL, 3, NULL);
 
     // ── Fan Control: auto theo semaphore nhiệt độ, manual từ Web ─────────────
-    xTaskCreate(FanControlTask,     "Task Fan Control",    4096, NULL, 2, NULL);
+    xTaskCreate(FanControlTask,     "Task Fan Control",    2048, NULL, 2, NULL);
 
     // ── CoreIOT: nhận Shared Attributes từ Mosquitto → CoreIOT → ESP32-B ─────
     xTaskCreate(coreiot_task,       "Task CoreIOT",        8192, NULL, 2, NULL);
 
-    xTaskCreate(tiny_ml_task,       "Task TinyML",        8192, NULL, 2, NULL);
+    // ── TinyML: chạy inference trên dữ liệu cảm biến ────────────────────────
+    xTaskCreate(tiny_ml_task,       "Task TinyML",         4096, NULL, 2, NULL);
 }
 
 void loop()
 {
+    // WiFi reconnect logic
     if (check_info_File(1)) {
-        Wifi_reconnect();
+        if (!Wifi_reconnect()) {
+            Webserver_stop();
+        }
     }
-
-    // Webserver luôn chạy: AP mode → config WiFi, STA mode → dashboard
+    // Web Server reconnect (AP mode luôn sẵn sàng)
     Webserver_reconnect();
-
-    delay(1000);
 }
