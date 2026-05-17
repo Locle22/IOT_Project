@@ -14,7 +14,7 @@ def setup_csv():
         with open(CSV_FILENAME, mode='x', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
-                "timestamp", "temperature", "humidity", "temp_rate", "humi_rate"
+                "timestamp", "temperature", "humidity", "temp_rate", "humi_rate",
                 "predicted_label", "real_label", "confidence_score", 
                 "prob_bg", "prob_nuisance", "prob_fire", 
                 "inference_time_ms", "memory_usage_bytes"

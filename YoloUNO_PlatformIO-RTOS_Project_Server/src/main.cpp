@@ -40,7 +40,7 @@ void setup()
     xTaskCreate(coreiot_task,       "Task CoreIOT",        8192, NULL, 2, NULL);
 
     // ── TinyML: chạy inference trên dữ liệu cảm biến ────────────────────────
-    xTaskCreate(tiny_ml_task,       "Task TinyML",         4096, NULL, 2, NULL);
+    xTaskCreate(tiny_ml_task,       "Task TinyML",         8192, NULL, 2, NULL);
 }
 
 void loop()
