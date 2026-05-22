@@ -5,7 +5,7 @@ from datetime import datetime
 
 COM_PORT = "COM15"  # Change to ESP32-B port
 BAUD_RATE = 115200
-CSV_FILENAME = "evaluation_log.csv"
+CSV_FILENAME = "model_run_result.csv"
 LOG_PREFIX = "[TINYML_LOG]"
 
 def setup_csv():

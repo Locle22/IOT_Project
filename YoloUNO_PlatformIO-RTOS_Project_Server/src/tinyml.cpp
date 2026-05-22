@@ -11,6 +11,10 @@ namespace {
     uint8_t tensor_arena[kTensorArenaSize];
 }
 
+// Exact standardization parameters extracted from your latest Colab Stage 2.1
+const float mean_values[4] = { 30.54642188f, 69.84349824f, 0.02481317f, -0.08868648f };
+const float scale_values[4] = { 3.88920078f, 6.80413667f, 0.45390116f, 1.80804241f };
+
 void setupTinyML()
 {
     Serial.println("TensorFlow Lite Init....");
@@ -56,66 +60,57 @@ static uint8_t argmax(float* output_data, int size, float* max_val) {
     return max_index;
 }
 
-// Task TinyML
+// Helper: replace argmax with a logic to validate predictions based on confidence thresholds
+static uint8_t get_validated_label(float* output_data, int size, float* max_val) {
+    float prob_bg = output_data[0];
+    float prob_nuisance = output_data[1];
+    float prob_fire = output_data[2];
+
+    *max_val = prob_bg;
+    uint8_t predicted_class = 0;
+
+    if (prob_fire > 0.5f) {
+        predicted_class = 2;
+        *max_val = prob_fire;
+    }
+    else if (prob_nuisance > 0.8f) {
+        predicted_class = 1;
+        *max_val = prob_nuisance;
+    }
+    return predicted_class;
+}
+
 void tiny_ml_task(void *pvParameters) {
     setupTinyML();
 
     float prev_temp = -1.0f; 
     float prev_hum  = -1.0f;
-    unsigned long prev_time_ms = 0;
 
     while (1) {
         SensorData sd = {0.0f, 0.0f};
         
         if (xQueuePeek(xQueueSensorData, &sd, 0) == pdTRUE) {
             
-            unsigned long current_time_ms = millis();
-            unsigned long time_since_last_log = current_time_ms - prev_time_ms;
-
-            // Only run inference if there's a change in temperature or humidity, OR if it's been more than 10 seconds since the last log
-            if ((sd.temp != prev_temp || sd.hum != prev_hum) || (time_since_last_log >= 10000)) {
-
-                float temp_rate_per_sec = 0.0f;
-                float humi_rate_per_sec  = 0.0f;
-
-                if (prev_temp != -1.0f && prev_hum != -1.0f && prev_time_ms != 0) {
-                    float delta_t_sec = time_since_last_log / 1000.0f; 
-                    if (delta_t_sec > 0.0f) {
-                        temp_rate_per_sec = (sd.temp - prev_temp) / delta_t_sec;
-                        humi_rate_per_sec  = (sd.hum - prev_hum) / delta_t_sec;
-                    }
+            if (sd.temp != prev_temp || sd.hum != prev_hum) {
+                
+                if (prev_temp == -1.0f) {
+                    prev_temp = sd.temp;
+                    prev_hum = sd.hum;
                 }
 
-                // Always update previous values for the next iteration
+                // Standard feature extraction layer
+                float temp_rate = sd.temp - prev_temp;
+                float humi_rate_cali = (sd.hum - prev_hum) * 2.0f;
+
                 prev_temp = sd.temp;
-                prev_hum  = sd.hum;
-                prev_time_ms = current_time_ms;
+                prev_hum = sd.hum;
 
-                // Standardize input data (get from output of processing in Colab)
-                // Mean (Trung bình): [3.06063380e+01 7.13055167e+01 5.86666667e-06 5.76000000e-05]
-                // Scale (Độ lệch chuẩn): [3.49245159 3.79721244 0.18175954 0.20207159]
-                const float mean_temp       = 30.6063380f;
-                const float mean_humi       = 71.3055167f;
-                const float mean_temp_rate  = 0.0000058667f;
-                const float mean_humi_rate  = 0.0000576000f;
+                // Preprocessing mapping block matching Colab StandardScaler topology
+                input->data.f[0] = (sd.temp - mean_values[0]) / scale_values[0];
+                input->data.f[1] = (sd.hum - mean_values[1]) / scale_values[1];
+                input->data.f[2] = (temp_rate - mean_values[2]) / scale_values[2];
+                input->data.f[3] = (humi_rate_cali - mean_values[3]) / scale_values[3];
 
-                const float scale_temp      = 3.49245159f;
-                const float scale_humi      = 3.79721244f;
-                const float scale_temp_rate = 0.18175954f;
-                const float scale_humi_rate = 0.20207159f;
-
-                // Execute Standardization formula: Z = (X - Mean) / Scale
-                input->data.f[0] = (sd.temp - mean_temp) / scale_temp;
-                input->data.f[1] = (sd.hum - mean_humi) / scale_humi;
-                input->data.f[2] = (temp_rate_per_sec - mean_temp_rate) / scale_temp_rate;
-                input->data.f[3] = (humi_rate_per_sec - mean_humi_rate) / scale_humi_rate;
-
-                // input->data.f[0] = sd.temp;
-                // input->data.f[1] = sd.hum;
-                // input->data.f[2] = temp_rate_per_sec;
-                // input->data.f[3] = humi_rate_per_sec;
-
-                // Run inference
                 unsigned long start_us = micros();
                 TfLiteStatus invoke_status = interpreter->Invoke();
                 unsigned long duration_us = micros() - start_us;
@@ -123,17 +118,15 @@ void tiny_ml_task(void *pvParameters) {
 
                 if (invoke_status == kTfLiteOk) {
                     float confidence_score = 0.0f;
-                    uint8_t predicted_class = argmax(output->data.f, 3, &confidence_score);
+                    uint8_t predicted_class = get_validated_label(output->data.f, 3, &confidence_score);
                     
                     float prob_bg       = output->data.f[0];
                     float prob_nuisance = output->data.f[1]; 
                     float prob_fire     = output->data.f[2]; 
                     uint32_t arena_used = interpreter->arena_used_bytes();
 
-                    // Update metrics and log entry
                     tinyml_update_all(predicted_class, confidence_score, sd.temp, sd.hum);
 
-                    // Format print serial and log
                     char time_str[30];
                     struct tm timeinfo;
                     if (!getLocalTime(&timeinfo)) {
@@ -142,16 +135,17 @@ void tiny_ml_task(void *pvParameters) {
                         strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
                     }
 
+                    // Log format: [TINYML_LOG],timestamp,temp,humi,temp_rate,humi_rate_cali,predicted_class,confidence_score,prob_bg,prob_nuisance,prob_fire,inference_time_ms,arena_used
                     Serial.printf("[TINYML_LOG],%s,%.2f,%.2f,%.4f,%.4f,%d,%.4f,%.4f,%.4f,%.4f,%.2f,%u\n",
-                                time_str, sd.temp, sd.hum, temp_rate_per_sec, humi_rate_per_sec, 
+                                time_str, sd.temp, sd.hum, temp_rate, humi_rate_cali / 2.0f, 
                                 predicted_class, confidence_score, 
                                 prob_bg, prob_nuisance, prob_fire, duration_ms, arena_used);
                 } else {
                     error_reporter->Report("Inference failed");
                 }
-            } 
-        }
+            }
 
+        }
         vTaskDelay(pdMS_TO_TICKS(500)); 
     }
 }
